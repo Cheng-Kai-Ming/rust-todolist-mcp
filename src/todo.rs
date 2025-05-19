@@ -10,7 +10,7 @@ use serde_json::json;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
-/// Todo项结构体
+/// Todo item structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TodoItem {
     pub id: String,
@@ -21,14 +21,14 @@ pub struct TodoItem {
     pub updated_at: DateTime<Utc>,
 }
 
-/// 创建新Todo的请求参数
+/// Request parameters for creating a new Todo
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CreateTodoRequest {
     pub title: String,
     pub description: Option<String>,
 }
 
-/// 更新Todo的请求参数
+/// Request parameters for updating a Todo
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct UpdateTodoRequest {
     pub id: String,
@@ -37,7 +37,7 @@ pub struct UpdateTodoRequest {
     pub completed: Option<bool>,
 }
 
-/// TodoList服务
+/// TodoList service
 #[derive(Clone)]
 pub struct TodoList {
     todos: Arc<Mutex<Vec<TodoItem>>>,
@@ -51,18 +51,18 @@ impl TodoList {
         }
     }
 
-    /// 列出所有待办事项
-    #[tool(description = "列出所有的待办事项")]
+    /// List all todo items
+    #[tool(description = "List all todo items")]
     async fn list_todos(&self) -> Result<CallToolResult, McpError> {
         let todos = self.todos.lock().await;
         let todos_json = serde_json::to_string_pretty(&*todos)
-            .map_err(|e| McpError::internal_error("序列化失败", Some(json!({"error": e.to_string()}))))?;
+            .map_err(|e| McpError::internal_error("Serialization failed", Some(json!({"error": e.to_string()}))))?;
         
         Ok(CallToolResult::success(vec![Content::text(todos_json)]))
     }
 
-    /// 创建一个新的待办事项
-    #[tool(description = "创建一个新的待办事项")]
+    /// Create a new todo item
+    #[tool(description = "Create a new todo item")]
     async fn create_todo(
         &self,
         #[tool(aggr)] req: CreateTodoRequest,
@@ -81,13 +81,13 @@ impl TodoList {
         todos.push(todo.clone());
 
         let todo_json = serde_json::to_string_pretty(&todo)
-            .map_err(|e| McpError::internal_error("序列化失败", Some(json!({"error": e.to_string()}))))?;
+            .map_err(|e| McpError::internal_error("Serialization failed", Some(json!({"error": e.to_string()}))))?;
         
         Ok(CallToolResult::success(vec![Content::text(todo_json)]))
     }
 
-    /// 更新待办事项
-    #[tool(description = "更新待办事项")]
+    /// Update a todo item
+    #[tool(description = "Update a todo item")]
     async fn update_todo(
         &self,
         #[tool(aggr)] req: UpdateTodoRequest,
@@ -109,23 +109,23 @@ impl TodoList {
                 todo.updated_at = Utc::now();
 
                 let todo_json = serde_json::to_string_pretty(&todo)
-                    .map_err(|e| McpError::internal_error("序列化失败", Some(json!({"error": e.to_string()}))))?;
+                    .map_err(|e| McpError::internal_error("Serialization failed", Some(json!({"error": e.to_string()}))))?;
                 
                 Ok(CallToolResult::success(vec![Content::text(todo_json)]))
             },
             None => Err(McpError::invalid_params(
-                "找不到指定ID的待办事项",
+                "Todo item with specified ID not found",
                 Some(json!({"id": req.id})),
             )),
         }
     }
 
-    /// 删除待办事项
-    #[tool(description = "删除待办事项")]
+    /// Delete a todo item
+    #[tool(description = "Delete a todo item")]
     async fn delete_todo(
         &self,
         #[tool(param)]
-        #[schemars(description = "待办事项ID")]
+        #[schemars(description = "Todo item ID")]
         id: String,
     ) -> Result<CallToolResult, McpError> {
         let mut todos = self.todos.lock().await;
@@ -135,22 +135,22 @@ impl TodoList {
             Some(idx) => {
                 todos.remove(idx);
                 Ok(CallToolResult::success(vec![Content::text(
-                    format!("成功删除ID为 {} 的待办事项", id)
+                    format!("Successfully deleted todo item with ID {}", id)
                 )]))
             },
             None => Err(McpError::invalid_params(
-                "找不到指定ID的待办事项",
+                "Todo item with specified ID not found",
                 Some(json!({"id": id})),
             )),
         }
     }
 
-    /// 获取单个待办事项详情
-    #[tool(description = "获取单个待办事项详情")]
+    /// Get details of a single todo item
+    #[tool(description = "Get details of a single todo item")]
     async fn get_todo(
         &self,
         #[tool(param)]
-        #[schemars(description = "待办事项ID")]
+        #[schemars(description = "Todo item ID")]
         id: String,
     ) -> Result<CallToolResult, McpError> {
         let todos = self.todos.lock().await;
@@ -159,23 +159,23 @@ impl TodoList {
         match todo {
             Some(todo) => {
                 let todo_json = serde_json::to_string_pretty(todo)
-                    .map_err(|e| McpError::internal_error("序列化失败", Some(json!({"error": e.to_string()}))))?;
+                    .map_err(|e| McpError::internal_error("Serialization failed", Some(json!({"error": e.to_string()}))))?;
                 
                 Ok(CallToolResult::success(vec![Content::text(todo_json)]))
             },
             None => Err(McpError::invalid_params(
-                "找不到指定ID的待办事项",
+                "Todo item with specified ID not found",
                 Some(json!({"id": id})),
             )),
         }
     }
 
-    /// 标记待办事项为已完成
-    #[tool(description = "标记待办事项为已完成")]
+    /// Mark a todo item as completed
+    #[tool(description = "Mark a todo item as completed")]
     async fn complete_todo(
         &self,
         #[tool(param)]
-        #[schemars(description = "待办事项ID")]
+        #[schemars(description = "Todo item ID")]
         id: String,
     ) -> Result<CallToolResult, McpError> {
         let mut todos = self.todos.lock().await;
@@ -187,12 +187,12 @@ impl TodoList {
                 todo.updated_at = Utc::now();
 
                 let todo_json = serde_json::to_string_pretty(&todo)
-                    .map_err(|e| McpError::internal_error("序列化失败", Some(json!({"error": e.to_string()}))))?;
+                    .map_err(|e| McpError::internal_error("Serialization failed", Some(json!({"error": e.to_string()}))))?;
                 
                 Ok(CallToolResult::success(vec![Content::text(todo_json)]))
             },
             None => Err(McpError::invalid_params(
-                "找不到指定ID的待办事项",
+                "Todo item with specified ID not found",
                 Some(json!({"id": id})),
             )),
         }
@@ -208,7 +208,7 @@ impl ServerHandler for TodoList {
                 .enable_tools()
                 .build(),
             server_info: Implementation::from_build_env(),
-            instructions: Some("这是一个待办事项服务器，您可以使用它来管理您的待办事项列表。使用list_todos查看所有待办事项，create_todo创建新的待办事项，update_todo更新现有待办事项，delete_todo删除待办事项，get_todo获取待办事项详情，complete_todo将待办事项标记为已完成。".to_string()),
+            instructions: Some("This is a todo server that helps you manage your todo list. Use list_todos to view all todos, create_todo to create new todos, update_todo to update existing todos, delete_todo to remove todos, get_todo to view todo details, and complete_todo to mark todos as completed.".to_string()),
         }
     }
 
